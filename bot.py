@@ -1,5 +1,7 @@
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
+from flask import Flask
+import threading
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
@@ -11,6 +13,22 @@ secret_santa = {
     6435812686: 1550705452,
 }
 
+# -----------------------------------------
+# FLASK DUMMY SERVER (keeps Render alive)
+# -----------------------------------------
+app_web = Flask(__name__)
+
+@app_web.get("/")
+def home():
+    return "Bot is running!", 200
+
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))  # Render sets $PORT
+    app_web.run(host="0.0.0.0", port=port)
+
+# -----------------------------------------
+# TELEGRAM BOT HANDLERS
+# -----------------------------------------
 async def start(update, context):
     await update.message.reply_text(
         "Hi! 🎄 Send me your Secret Santa gift and I’ll deliver it anonymously!"
@@ -43,13 +61,15 @@ async def forward_gift(update, context):
 # RUN (PTB 20+ syntax)
 # -----------------------------------------
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    # Start dummy web server in background
+    threading.Thread(target=run_flask, daemon=True).start()
 
+    # Start Telegram bot
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.ALL, forward_gift))
-
     print("Bot is running...")
-    app.run_polling()   # ✔️ This is valid in PTB20
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
