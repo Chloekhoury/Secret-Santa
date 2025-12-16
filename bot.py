@@ -1,8 +1,8 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 
-BOT_TOKEN = "8353548147:AAE030dtzLngQmuVzV25zcQWEAvcrz1unsI"
-
+import os
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 # -----------------------------------------
 #  SECRET SANTA ASSIGNMENTS
 # -----------------------------------------
@@ -71,3 +71,4 @@ app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
 print("Bot is running…")
 app.run_polling()
+
