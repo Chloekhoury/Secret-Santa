@@ -1,8 +1,8 @@
 import os
-import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (
+    Application,
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
@@ -10,24 +10,26 @@ from telegram.ext import (
     filters,
 )
 
-# -----------------------------------------
-# ENV VARS
-# -----------------------------------------
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # https://YOUR-SERVICE-URL
+WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # https://secret-santa-xxxxx.run.app
+PORT = int(os.environ.get("PORT", 8080))
 
-# -----------------------------------------
+# -----------------------
 # SECRET SANTA MAP
-# -----------------------------------------
+# -----------------------
 secret_santa = {
     8314370785: 953010204,
     6435812686: 1550705452,
 }
 
-# -----------------------------------------
-# TELEGRAM BOT
-# -----------------------------------------
-telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
+# -----------------------
+# TELEGRAM APP
+# -----------------------
+telegram_app: Application = (
+    ApplicationBuilder()
+    .token(BOT_TOKEN)
+    .build()
+)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -55,25 +57,31 @@ async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
-# -----------------------------------------
-# FLASK APP
-# -----------------------------------------
+# -----------------------
+# FLASK WEB SERVER
+# -----------------------
 app = Flask(__name__)
 
 @app.get("/")
 def home():
-    return "Secret Santa bot is running 🎄", 200
+    return "Secret Santa bot running 🎄", 200
 
 @app.post("/webhook")
-def webhook():
+async def webhook():
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-    telegram_app.update_queue.put_nowait(update)
+    await telegram_app.process_update(update)
     return "OK", 200
 
-# -----------------------------------------
-# STARTUP (NO before_first_request!)
-# -----------------------------------------
+# -----------------------
+# STARTUP
+# -----------------------
 async def setup():
+    await telegram_app.initialize()
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
 
-asyncio.get_event_loop().run_until_complete(setup())
+@app.before_serving
+async def startup():
+    await setup()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=PORT)
