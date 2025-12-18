@@ -1,14 +1,19 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import os
 from flask import Flask, request
-import threading
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-BASE_URL = "https://secret-santa-yzga.onrender.com"   # ⚠️ Replace if your URL changes
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+PUBLIC_URL = os.environ["PUBLIC_URL"]  # e.g. https://secret-santa.fly.dev
 
 # -----------------------------------------
-# SECRET SANTA
+# SECRET SANTA MAPPING
 # -----------------------------------------
 secret_santa = {
     8314370785: 953010204,
@@ -16,36 +21,14 @@ secret_santa = {
 }
 
 # -----------------------------------------
-# FLASK SERVER FOR WEBHOOK
+# TELEGRAM HANDLERS
 # -----------------------------------------
-app_web = Flask(__name__)
-application = None   # global PTB application object
-
-@app_web.get("/")
-def home():
-    return "Bot is running!", 200
-
-@app_web.post("/webhook")
-def webhook():
-    global application
-    update_data = request.get_json(force=True)
-    update = Update.de_json(update_data, application.bot)
-    application.create_update(update)
-    return "OK", 200
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app_web.run(host="0.0.0.0", port=port)
-
-# -----------------------------------------
-# TELEGRAM BOT HANDLERS
-# -----------------------------------------
-async def start(update, context):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Hi! 🎄 Send me your Secret Santa gift and I’ll deliver it anonymously!"
     )
 
-async def forward_gift(update, context):
+async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sender_id = update.message.from_user.id
 
     if sender_id not in secret_santa:
@@ -54,43 +37,50 @@ async def forward_gift(update, context):
 
     receiver_id = secret_santa[sender_id]
 
-    try:
-        await context.bot.copy_message(
-            chat_id=receiver_id,
-            from_chat_id=update.message.chat_id,
-            message_id=update.message.message_id,
-            caption="🎁 Anonymous Secret Santa gift!",
-        )
-    except Exception as e:
-        print("Error:", e)
-        await update.message.reply_text("Error delivering the gift.")
-        return
+    await context.bot.copy_message(
+        chat_id=receiver_id,
+        from_chat_id=update.message.chat_id,
+        message_id=update.message.message_id,
+        caption="🎁 Anonymous Secret Santa gift!",
+    )
 
     await update.message.reply_text("🎀 Your anonymous gift was delivered!")
 
 # -----------------------------------------
-# RUN (Webhook mode)
+# FLASK + TELEGRAM APP
 # -----------------------------------------
-def main():
-    global application
+flask_app = Flask(__name__)
 
-    # Start Flask server for webhook
-    threading.Thread(target=run_flask, daemon=True).start()
+telegram_app = (
+    ApplicationBuilder()
+    .token(BOT_TOKEN)
+    .build()
+)
 
-    # Build telegram bot application
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
+telegram_app.add_handler(CommandHandler("start", start))
+telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
-    # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.ALL, forward_gift))
+@flask_app.route("/")
+def home():
+    return "Secret Santa bot is running 🎄", 200
 
-    # Set webhook
-    webhook_url = f"{BASE_URL}/webhook"
-    application.bot.set_webhook(webhook_url)
-    print("Webhook set at:", webhook_url)
+@flask_app.route("/webhook", methods=["POST"])
+async def webhook():
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    await telegram_app.process_update(update)
+    return "OK", 200
 
-    # PTB idle loop
-    application.run_polling(stop_signals=None)
-
+# -----------------------------------------
+# STARTUP
+# -----------------------------------------
 if __name__ == "__main__":
-    main()
+    import asyncio
+
+    async def main():
+        await telegram_app.bot.set_webhook(f"{PUBLIC_URL}/webhook")
+        print("Webhook set!")
+
+    asyncio.run(main())
+
+    port = int(os.environ.get("PORT", 8080))
+    flask_app.run(host="0.0.0.0", port=port)
