@@ -1,6 +1,5 @@
 import os
 import asyncio
-from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
@@ -13,7 +12,9 @@ secret_santa = {
     6435812686: 1550705452,
 }
 
+# -------------------------
 # Telegram bot
+# -------------------------
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -36,31 +37,25 @@ async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
-# Flask app
-app = Flask(__name__)
-
-@app.get("/")
-def home():
-    return "Secret Santa bot is running 🎄", 200
-
-@app.post("/webhook")
-def webhook():
-    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-    asyncio.create_task(telegram_app.update_queue.put(update))
-    return "OK", 200
-
 # -------------------------
-# Main async setup
+# Run bot with webhook
 # -------------------------
 async def main():
     await telegram_app.initialize()
+
     # Set webhook
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
     print("Webhook set!")
-    # Keep bot alive while Flask runs
-    await telegram_app.start()
-    # Flask runs synchronously
-    app.run(host="0.0.0.0", port=PORT)
+
+    # Start webhook listener directly
+    await telegram_app.start_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_path="/webhook"
+    )
+
+    print(f"Bot is running on {WEBHOOK_URL}/webhook")
+    await telegram_app.idle()  # keep the bot alive
 
 if __name__ == "__main__":
     asyncio.run(main())
