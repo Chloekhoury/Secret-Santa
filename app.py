@@ -1,28 +1,20 @@
 import os
 import asyncio
+import threading
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
-
-if not BOT_TOKEN or not WEBHOOK_URL:
-    raise RuntimeError("BOT_TOKEN or WEBHOOK_URL missing")
 
 secret_santa = {
     8314370785: 953010204,
     6435812686: 1550705452,
 }
 
-# Build app WITHOUT starting polling/updater
+# Build Telegram app (do NOT call start_polling)
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -48,9 +40,7 @@ async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
-# -------------------------
-# FLASK APP
-# -------------------------
+# Flask app
 app = Flask(__name__)
 
 @app.get("/")
@@ -59,22 +49,24 @@ def home():
 
 @app.post("/webhook")
 def webhook():
-    """Receives Telegram updates and puts them in the telegram_app queue."""
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
     telegram_app.update_queue.put_nowait(update)
     return "OK", 200
 
 # -------------------------
-# STARTUP
+# Start Telegram app in background thread
 # -------------------------
-async def start_bot():
-    # Initialize bot, but DO NOT start polling
-    await telegram_app.initialize()
-    await telegram_app.start()
-    # Set webhook so Telegram can send updates
-    await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+def run_async_loop():
+    asyncio.run(telegram_app.initialize())
+    asyncio.run(telegram_app.start())
+    # Set webhook
+    asyncio.run(telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook"))
+    asyncio.get_event_loop().run_forever()
 
-# Run startup and Flask server
+threading.Thread(target=run_async_loop, daemon=True).start()
+
+# -------------------------
+# Start Flask server
+# -------------------------
 if __name__ == "__main__":
-    asyncio.run(start_bot())
     app.run(host="0.0.0.0", port=PORT)
