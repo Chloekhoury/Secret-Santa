@@ -11,10 +11,10 @@ from telegram.ext import (
 )
 
 # -----------------------------------------
-# ENV
+# ENV VARS
 # -----------------------------------------
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # https://secret-santa--rvx5g.fly.dev
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+WEBHOOK_URL = os.environ["WEBHOOK_URL"]  # https://YOUR-SERVICE-URL
 
 # -----------------------------------------
 # SECRET SANTA MAP
@@ -31,7 +31,7 @@ telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Hi! 🎄 Send me your Secret Santa gift and I’ll deliver it anonymously!"
+        "🎄 Send me your Secret Santa gift and I’ll deliver it anonymously!"
     )
 
 async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -71,12 +71,9 @@ def webhook():
     return "OK", 200
 
 # -----------------------------------------
-# STARTUP (NO before_first_request)
+# STARTUP (NO before_first_request!)
 # -----------------------------------------
-async def startup():
-    await telegram_app.initialize()
+async def setup():
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
-    print("✅ Webhook set")
 
-# Run startup once when app loads
-asyncio.get_event_loop().create_task(startup())
+asyncio.get_event_loop().run_until_complete(setup())
