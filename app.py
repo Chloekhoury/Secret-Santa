@@ -1,4 +1,5 @@
 import os
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (
@@ -9,11 +10,14 @@ from telegram.ext import (
     filters,
 )
 
+# -----------------------------------------
+# ENV
+# -----------------------------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # e.g. https://secret-santa--rvx5g.fly.dev
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # https://secret-santa--rvx5g.fly.dev
 
 # -----------------------------------------
-# SECRET SANTA
+# SECRET SANTA MAP
 # -----------------------------------------
 secret_santa = {
     8314370785: 953010204,
@@ -52,7 +56,7 @@ telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
 # -----------------------------------------
-# FLASK APP (WEBHOOK)
+# FLASK APP
 # -----------------------------------------
 app = Flask(__name__)
 
@@ -67,8 +71,12 @@ def webhook():
     return "OK", 200
 
 # -----------------------------------------
-# STARTUP
+# STARTUP (NO before_first_request)
 # -----------------------------------------
-@app.before_first_request
-def setup_webhook():
-    telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+async def startup():
+    await telegram_app.initialize()
+    await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+    print("✅ Webhook set")
+
+# Run startup once when app loads
+asyncio.get_event_loop().create_task(startup())
