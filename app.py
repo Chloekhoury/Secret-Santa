@@ -1,7 +1,7 @@
 import os
-import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from aiohttp import web
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
@@ -12,9 +12,7 @@ secret_santa = {
     6435812686: 1550705452,
 }
 
-# -------------------------
 # Telegram bot
-# -------------------------
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -37,25 +35,22 @@ async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
-# -------------------------
-# Run bot with webhook
-# -------------------------
-async def main():
-    await telegram_app.initialize()
+# aiohttp server for webhook
+async def handle(request):
+    update = Update.de_json(await request.json(), telegram_app.bot)
+    await telegram_app.update_queue.put(update)
+    return web.Response(text="OK")
 
-    # Set webhook
+app = web.Application()
+app.router.add_post("/webhook", handle)
+app.router.add_get("/", lambda request: web.Response(text="Secret Santa bot is running 🎄"))
+
+async def on_startup(app):
+    await telegram_app.initialize()
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
     print("Webhook set!")
 
-    # Start webhook listener directly
-    await telegram_app.start_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_path="/webhook"
-    )
-
-    print(f"Bot is running on {WEBHOOK_URL}/webhook")
-    await telegram_app.idle()  # keep the bot alive
+app.on_startup.append(on_startup)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    web.run_app(app, port=PORT)
