@@ -15,6 +15,7 @@ from telegram.ext import (
 # -------------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+PORT = int(os.getenv("PORT", 8080))  # Choreo injects PORT
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is missing")
@@ -77,13 +78,16 @@ def webhook():
     return "OK", 200
 
 # -------------------------
-# STARTUP (Cloud Run safe)
+# BOT STARTUP (ONCE)
 # -------------------------
-@app.before_first_request
-def start_bot():
-    async def startup():
-        await telegram_app.initialize()
-        await telegram_app.start()
-        await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+async def init_bot():
+    await telegram_app.initialize()
+    await telegram_app.start()
+    await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
 
-    asyncio.run(startup())
+# -------------------------
+# ENTRYPOINT
+# -------------------------
+if __name__ == "__main__":
+    asyncio.run(init_bot())
+    app.run(host="0.0.0.0", port=PORT)
