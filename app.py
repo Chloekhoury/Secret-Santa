@@ -10,9 +10,6 @@ from telegram.ext import (
     filters,
 )
 
-# -------------------------
-# ENV VARS
-# -------------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
@@ -20,17 +17,12 @@ PORT = int(os.getenv("PORT", 10000))
 if not BOT_TOKEN or not WEBHOOK_URL:
     raise RuntimeError("BOT_TOKEN or WEBHOOK_URL missing")
 
-# -------------------------
-# SECRET SANTA MAP
-# -------------------------
 secret_santa = {
     8314370785: 953010204,
     6435812686: 1550705452,
 }
 
-# -------------------------
-# TELEGRAM BOT
-# -------------------------
+# Build app WITHOUT starting polling/updater
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,6 +59,7 @@ def home():
 
 @app.post("/webhook")
 def webhook():
+    """Receives Telegram updates and puts them in the telegram_app queue."""
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
     telegram_app.update_queue.put_nowait(update)
     return "OK", 200
@@ -75,10 +68,13 @@ def webhook():
 # STARTUP
 # -------------------------
 async def start_bot():
+    # Initialize bot, but DO NOT start polling
     await telegram_app.initialize()
     await telegram_app.start()
+    # Set webhook so Telegram can send updates
     await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
 
+# Run startup and Flask server
 if __name__ == "__main__":
     asyncio.run(start_bot())
     app.run(host="0.0.0.0", port=PORT)
