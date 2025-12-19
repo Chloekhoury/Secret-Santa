@@ -13,6 +13,7 @@ BASE_URL = "https://secret-santa-2-6ah3.onrender.com"   # ⚠️ Replace if your
 secret_santa = {
     8314370785: 953010204,
     6435812686: 1550705452,
+    953010204: 8314370785,
 }
 
 # -----------------------------------------
@@ -41,15 +42,20 @@ def run_flask():
 # TELEGRAM BOT HANDLERS
 # -----------------------------------------
 async def start(update, context):
-    await update.message.reply_text(
-        "Hi! 🎄 Send me your Secret Santa gift and I’ll deliver it anonymously!"
+    user_name = update.effective_user.first_name  # Get the user's first name
+    welcome_message = (
+        f"Welcome {user_name} to Secret Santa! 🎁🎄\n"
+        "Send me your gift (text, image, video, audio...) and I’ll deliver it anonymously to your assigned person :)\n\n"
+        "You can check the suggested gifts in the group, and contact an admin if you need help.\n"
+        "Have fun spreading holiday cheer! 🎅"
     )
+    await update.message.reply_text(welcome_message)
 
 async def forward_gift(update, context):
     sender_id = update.message.from_user.id
 
     if sender_id not in secret_santa:
-        await update.message.reply_text("You’re not in the Secret Santa list.")
+        await update.message.reply_text("You’re not in the Secret Santa list! Please Contact an Admin to join :)")
         return
 
     receiver_id = secret_santa[sender_id]
@@ -66,7 +72,7 @@ async def forward_gift(update, context):
         await update.message.reply_text("Error delivering the gift.")
         return
 
-    await update.message.reply_text("🎀 Your anonymous gift was delivered!")
+    await update.message.reply_text("🎁 Your anonymous gift was delivered!")
 
 # -----------------------------------------
 # RUN (Webhook mode)
@@ -94,4 +100,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
