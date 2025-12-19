@@ -1,11 +1,14 @@
-import os
+from flask import Flask, request
+import asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-from aiohttp import web
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
+
+app = Flask(__name__)
 
 secret_santa = {
     8314370785: 953010204,
@@ -35,22 +38,20 @@ async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
-# aiohttp server for webhook
-async def handle(request):
-    update = Update.de_json(await request.json(), telegram_app.bot)
-    await telegram_app.update_queue.put(update)
-    return web.Response(text="OK")
+@app.route("/", methods=["GET"])
+def home():
+    return "Secret Santa bot is running 🎄", 200
 
-app = web.Application()
-app.router.add_post("/webhook", handle)
-app.router.add_get("/", lambda request: web.Response(text="Secret Santa bot is running 🎄"))
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    asyncio.create_task(telegram_app.update_queue.put(update))
+    return "OK", 200
 
-async def on_startup(app):
-    await telegram_app.initialize()
-    await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
-    print("Webhook set!")
-
-app.on_startup.append(on_startup)
-
+# -------------------------
+# Only run on local dev
+# -------------------------
 if __name__ == "__main__":
-    web.run_app(app, port=PORT)
+    asyncio.run(telegram_app.initialize())
+    asyncio.run(telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook"))
+    app.run(host="0.0.0.0", port=PORT)
