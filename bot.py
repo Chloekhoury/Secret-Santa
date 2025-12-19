@@ -5,7 +5,7 @@ from flask import Flask, request
 import threading
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-BASE_URL = "https://secret-santa-yzga.onrender.com"   # ⚠️ Replace if your URL changes
+BASE_URL = "https://secret-santa-2-6ah3.onrender.com"   # ⚠️ Replace if your URL changes
 
 # -----------------------------------------
 # SECRET SANTA
@@ -94,3 +94,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
