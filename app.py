@@ -1,26 +1,27 @@
-from flask import Flask, request
-import asyncio
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import os
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
 
-app = Flask(__name__)
-
+# Secret Santa mapping: sender_id -> receiver_id
 secret_santa = {
     8314370785: 953010204,
     6435812686: 1550705452,
 }
 
-# Telegram bot
+# Telegram bot setup
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+# Start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎄 Send me your Secret Santa gift and I’ll deliver it anonymously!")
+    await update.message.reply_text(
+        "🎄 Send me your Secret Santa gift and I’ll deliver it anonymously!"
+    )
 
+# Forward gifts
 async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sender_id = update.message.from_user.id
     if sender_id not in secret_santa:
@@ -35,23 +36,17 @@ async def forward_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text("🎀 Your anonymous gift was delivered!")
 
+# Handlers
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(MessageHandler(filters.ALL, forward_gift))
 
-@app.route("/", methods=["GET"])
-def home():
-    return "Secret Santa bot is running 🎄", 200
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-    asyncio.create_task(telegram_app.update_queue.put(update))
-    return "OK", 200
-
 # -------------------------
-# Only run on local dev
+# Run bot with webhook
 # -------------------------
 if __name__ == "__main__":
-    asyncio.run(telegram_app.initialize())
-    asyncio.run(telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook"))
-    app.run(host="0.0.0.0", port=PORT)
+    print("Starting Telegram bot with webhook...")
+    telegram_app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url=f"{WEBHOOK_URL}/webhook"
+    )
