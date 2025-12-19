@@ -44,8 +44,9 @@ def run_flask():
 async def start(update, context):
     user_name = update.effective_user.first_name  # Get the user's first name
     welcome_message = (
-        f"Welcome {user_name} to Secret Santa! 🎁🎄\n"
+        f"Welcome {user_name} to Secret Santa! 🎁🎄\n\n"
         "Send me your gift (text, image, video, audio...) and I’ll deliver it anonymously to your assigned person :)\n\n"
+        "🎁 When your Secret Santa sends you a gift, I’ll send it to you safely!\n\n"
         "You can check the suggested gifts in the group, and contact an admin if you need help.\n"
         "Have fun spreading holiday cheer! 🎅"
     )
@@ -65,14 +66,14 @@ async def forward_gift(update, context):
             chat_id=receiver_id,
             from_chat_id=update.message.chat_id,
             message_id=update.message.message_id,
-            caption="🎁 Anonymous Secret Santa gift!",
+            caption="🎁 You've just received a gift from your Secret Santa!",
         )
     except Exception as e:
         print("Error:", e)
         await update.message.reply_text("Error delivering the gift.")
         return
 
-    await update.message.reply_text("🎁 Your anonymous gift was delivered!")
+    await update.message.reply_text("Your anonymous gift was delivered! 🎀")
 
 # -----------------------------------------
 # RUN (Webhook mode)
@@ -100,5 +101,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
