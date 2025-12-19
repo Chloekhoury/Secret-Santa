@@ -17,6 +17,35 @@ secret_santa = {
 }
 
 # -----------------------------------------
+# USERS (Telegram user_id -> first name)
+# -----------------------------------------
+users = {
+    1102178295: "Hari / @haryssa",
+    1200358737: "Horsy / @horsyy22",
+    1127250559: "Iron Clutch / @GEOO33",
+    6787987399: "Zaynab / @Arabloca",
+    8238617588: "Georges / @joujou213",
+    1745552363: "M K / @mhk99999",
+    355568598: "Mr. / @maslamat",
+    6435812686: "Katniss / @straykitt",
+    6260588359: "SilentHypothesis / @Habi_so5ni_habi_bardi",
+    953010204: "Baja / @httpsaday",
+    6041436567: "Znoos / @Abdulthaqalayn_35",
+    1550705452: "J' / @Spiirts"
+    7621440955: "Vehpe",
+    7570345391: "X",
+    8314370785: "Valentina",
+    6529739470: "Summer",
+    1637299594: "Bodvar",
+    6090615056: "J'' / @alloushi316",
+    6788861481: "Mary Jane",
+    7938290661: "Sunshine / @sunsi4",
+    8093046225: "Hussein / @husseinniessuh0",
+    7701779702: "Youssef",
+    7892946294: "CauliflourProMax / @Cauliflur",
+}
+
+# -----------------------------------------
 # FLASK SERVER FOR WEBHOOK
 # -----------------------------------------
 app_web = Flask(__name__)
@@ -43,10 +72,16 @@ def run_flask():
 # -----------------------------------------
 async def start(update, context):
     user_name = update.effective_user.first_name  # Get the user's first name
+    user_id = update.effective_user.id
+    receiver_id = secret_santa[user_id]
+    receiver_name = users.get(receiver_id, "your Secret Santa person")
+
     welcome_message = (
-        f"Welcome {user_name} to Secret Santa! 🎁🎄\n\n"
-        "Send me your gift (text, image, video, audio...) and I’ll deliver it anonymously to your assigned person :)\n\n"
-        "🎁 When your Secret Santa sends you a gift, I’ll send it to you safely!\n\n"
+        f"Welcome {user_name} to Secret Santa! 🎁🎄\n"
+        f"✨ You are the Secret Santa for **{receiver_name}** ✨\n\n"
+
+        "Send me your gift (text, image, video, audio...) and I’ll deliver it anonymously to him/her :)\n\n"
+        "🎁 And when your Secret Santa sends you a gift, I’ll send it to you safely!\n\n"
         "You can check the suggested gifts in the group, and contact an admin if you need help.\n"
         "Have fun spreading holiday cheer! 🎅"
     )
@@ -101,6 +136,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
