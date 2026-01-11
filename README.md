@@ -90,17 +90,43 @@ In our case, the 500 KB setting provides the best balance, since quality improve
 
 ## How to Use
 
-1. Make sure Python and all required libraries are installed, and the attached model is downloaded.
-2. Start the backend server:
-   ```bash
-   python app.py
+1. Make sure Python and all required libraries are installed:
+`pip install -r requirements.txt`
+This installs:
+- OpenCV, NumPy, Pillow
+- Flask (backend API)
+- Matplotlib, scikit‑image (metrics & plots)
+- Torch and Real‑ESRGAN dependencies (optional AI upscaling)
+
+2. Clone and install Real‑ESRGAN:
+`git clone https://github.com/xinntao/Real-ESRGAN.git
+cd Real-ESRGAN
+pip install basicsr facexlib gfpgan
+pip install -r requirements.txt
+python setup.py develop`
+
+3. Download the pretrained model:
+`wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -P weights`
+
+4. Start the backend server (Flask API):
+   `python app.py`
+   
 3. Start the frontend (from the frontend folder):
-  npm install
-  npm start
-4. Open the web interface in your browser: http://localhost:5173/
-5. Upload a photo of a laminated image.
-6. Click Process to run the full pipeline.
-7. View the restored image, the processing steps, and the compressed versions with their quality metrics.
+`cd frontend
+npm install
+npm start`
+
+5. Open the web interface in your browser:
+`http://localhost:5173/`
+
+7. Upload a photo of a laminated image, Click Process to run the full pipeline.
+   
+9. After running, the output/ folder contains:
+- processed_PHOTONAME.jpg – final enhanced image
+- reference_for_metrics.png – lossless reference
+- Compressed JPEGs (30 KB, 100 KB, 500 KB, 1 MB)
+- processing_pipeline.png – visual steps of the pipeline
+- Rate‑distortion plots (PSNR vs bpp, SSIM vs bpp)
 
 For a complete walkthrough, please refer to the demo videos included with the submission.
 
